@@ -40,20 +40,18 @@ data <- data %>%
   mutate(total=ageunder16+age16_24+age25_44+age45_64+age65over)
 
 #converting dates
-test <- data %>% 
+data <- data %>% 
   mutate(date=as.Date(paste('01',substr(date,1,3),
                             '20',substr(date,5,6),sep=''),'%d%B%Y'))
 
-data_all_pop <- test %>% 
-  filter(population_group=='All Population')
-
-p_all_pop=ggplot(data=data_all_pop,aes(x=date,y=total))+geom_point()
-p_all_pop
+#removing id
+data <- data %>% 
+  select(-id)
 
          
+# Save Data #
 
-#### What's next? ####
-
+write_csv(data,'inputs/data/shelter_flow.csv')
 
 
          
