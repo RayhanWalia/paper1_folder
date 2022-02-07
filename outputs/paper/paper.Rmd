@@ -1,14 +1,12 @@
 ---
-title: "My title"
-subtitle: "My subtitle if needed"
+title: "The Impact on Toronto's Shelter Flow for 2020-21"
 author: 
-  - First author
-  - Another author
-thanks: "Code and data are available at: LINK."
+  - Rayhan Walia
+thanks: "Code and data are available at: https://github.com/RayhanWalia/paper1_folder"
 date: "`r format(Sys.time(), '%d %B %Y')`"
-abstract: "First sentence. Second sentence. Third sentence. Fourth sentence."
+abstract: "Shelter usage is an indication of the progress of Toronto's fight against homelessness, and will provide a benchmark for future observations. In this report, we acquire and best decribe a dataset with this information; ranging from January 2020 to December 2021, to provide a deeper understanding of the content. Through a series of numerical summaries and visualizations, we interpret the data and observe the various  impacts; such as the Covid-19 pandemic, on the data set."
 output:
-  bookdown::pdf_document2
+  bookdown::pdf_document2:
 toc: FALSE
 bibliography: references.bib
 ---
@@ -17,91 +15,220 @@ bibliography: references.bib
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
-library(palmerpenguins)
+library(ggplot2)
+library(knitr)
+library(svglite)
+library(kableExtra)
+library(opendatatoronto)
 ```
 
 # Introduction
+Homelessness is one of the largest struggles that humanity continuously faces, with 30,000 people homeless on any given night in Canada (Gaetz, Donaldson, Richter and Gulliver 2013). While there are few counties that are actually improving their homelessness numbers, such as Helsinki and Finland, where, "the number of long term homeless people in Finland has fallen by more than 35%" (Henley 2019), they are unfortunately outliers in the grander scheme. In fact, there are no counties in the world rid of homelessness (Coimbra 2016)! 
 
-You can and should cross-reference sections and sub-sections. For instance, Section \@ref(data). R Markdown automatically makes the sections lower case and adds a dash to spaces to generate labels, for instance, Section \@ref(first-discussion-point). 
+The most common combatants for this problem around the world are homeless shelters; locations where homeless can reside. These aren't solutions to the problem, however can be temporary fixes for many individuals. These shelters contain information about how any one city is battling homelessness, as it keeps records of people coming in and out. With enough data, one could provide accurate predictions and summaries of the flow in these shelter systems. Today, we explore a data set which includes this information on Toronto, for the years 2020-21. We will observe the various characteristics of the data, and attempt to analyze and interpret it in context. By doing so, we further understand the impact the homeless population has on the shelters, and be closer to ending the fight against homelessness in Toronto. As previously mentioned, this is not a solution, but for our purposes serves as a center of information; since we must truly understand the problem before we find a solution. 
+
+In these years; 2020 and 2021, the world went through one of the most difficult times in the last century; the Covid-19 pandemic. With governmental relief programs in action, there were significant upgrades made to the 24-hour shelter system (Nerad, Iman, Wolfson, and Islam 2021), which (one would think) would clearly impact the data collected. This will be tested in the report. Due to this, results in this report can only be similar to situations such as the pandemic, and cannot be completely generalized; i.e. cannot be accurately used to predict future data, given the pandemic ends. Therefore, this report will improve the understanding only in the extreme situation of a worldwide pandemic. 
 
 
+All of the data processing was performed using the R programming language (R Core Team 2021), with the common package used throughout the paper being **tidyverse** (Wickham et al. 2019). Figures are most commonly created with **ggplot2** (Wikham 2016) and tables with **knitr** (Xie 2021) and **kableExtra** (Zhu 2021). 
+
+<!-- You can and should cross-reference sections and sub-sections. For instance, Section \@ref(data). R Markdown automatically makes the sections lower case and adds a dash to spaces to generate labels, for instance, Section \@ref(first-discussion-point). -->
 
 # Data
 
-Our data is of penguins (Figure \@ref(fig:bills)).
+The data was acquired via the City of Toronto Open Data portal, through the R package **opendatatoronto** (Gelfand 2020); which contains various datasets on multiple different subjects; surrounding Toronto. This report considers the Toronto Shelter System Flow data set (Shelter 2022), which is updated monthly; however our concern is simply surrounding the years 2020-2021, the data for which has already been acquired. 
 
-```{r bills, fig.cap="Bills of penguins", echo = FALSE}
-ggplot(penguins, aes(x = island, fill = species)) +
-  geom_bar(alpha = 0.8) +
-  scale_fill_manual(values = c("darkorange","purple","cyan4"),
-                    guide = FALSE) +
-  theme_minimal() +
-  facet_wrap(~species, ncol = 1) +
-  coord_flip()
+## Collection
+These shelter systems have all been funded by the City of Toronto, which include overnight services, programs such as converting hotels/motels to shelters, as well as emergency shelters built for the pandemic (Shelter 2022 and Nerad, Iman, Wolfson, and Islam 2021). All of these shelters use the Shelter Management Information System (SMIS), that keeps a record of all individuals accessing the programs, to be able to create datasets such as this one to then later analyze.
+
+The obvious limitation to the collection process, is that it is only conducted via City of Toronto sponsored shelters, and does not encompass the entire homeless population. It is estimated that approximately 18% of people experiencing homelessness in Toronto are not captured in this data (Shelter 2022). Sites that do not use the SMIS system are also not included, further adding to the specificity of this dataset. This translates to a weaker overall analysis, with any *major* result presented containing bias (source bias). The goal is to expand the dataset into involving all homeless individuals, including ones not accounted by the City of Toronto, to be able to fully understand the homeless situation in Toronto. 
+
+## Charactersistics 
+Before we explore the characteristics of the data set, we must clean the variable names, which is done with the assistance of the **janitor** package (Firke 2021).
+
+The dataset contains information such as; the number of people coming in and leaving the shelters, unique individuals and common folk entering the shelters, and more, all broken down into 7 categories describing different population groups. A variable was created representing the total number of people in the shelter system in any given month, which was calculated via adding the number of people in each age group for each population group.^[Note, that the population groups are not independent, i.e. there could be a refugee family] To simplify the understanding of the data, we add generalized variables^[so it can encompass a larger range of people; all of whom have returned to the shelter, and all whom have left] by combining columns; such as the ones describing the number of people that have returned to the shelter, and the ones with the number of people leaving the shelter.
+
+A brief overview^[including only relevant (describing inflow, outflow, and residents) columns of the data] of the data can be observed in Table \@ref(tab:sheltertable).
+
+```{r sheltertable,echo=FALSE,tab.cap='test'}
+data <- read.csv(here::here('inputs/data/shelter_flow.csv'))
+
+data %>% 
+  select(population_group,returned,newly_identified,actively_homeless,moved,total) %>% 
+  slice(1:7) %>% 
+  kable(
+    caption = "January 2020 data for all population groups entering (Returned and Unique) and leaving (Moved) the Toronto shelter system, with actively homeless (Active) and the total number of residents in the system (Total)",
+    col.names = c("Group", "Returned", "Unique", "Active", "Moved", "Total"),
+    booktabs = TRUE, 
+    linesep = ""
+  ) %>% 
+  kable_styling(latex_options = "hold_position")
 ```
 
-Talk more about it.
+An interesting observation that can be made is the number of actively homeless people is similar (in some groups; exactly equal) to the total number of residents in the shelter. This conveys that roughly a similar number of people enter and leave the system each month; assuming this month (January) is a good representation for the data^[knowing that the pandemic would begin in another 3 months, this might not be true]. Via summarizing data for the entirety of the collection, this will be tested in the report.
 
-Also bills and their average (Figure \@ref(fig:billssssss)). (Notice how you can change the height and width so they don't take the whole page?)
+### Total Population
+To further dive into the contents of this data, we first observe how the total population of each group changed across homeless shelters over time. As mentioned previously, this variable is attained via adding the various age groups for each population group. The trend can be observed in Figure \@ref(fig:total). 
 
-```{r billssssss, fig.cap="More bills of penguins", echo = FALSE, fig.width=8, fig.height=4}
 
-# This needs to be about the random data tha tI sasmpled?
-ggplot(penguins, aes(x = island, fill = species)) +
-  geom_bar(alpha = 0.8) +
-  scale_fill_manual(values = c("darkorange","purple","cyan4"),
-                    guide = FALSE) +
-  theme_minimal() +
-  facet_wrap(~species, ncol = 1) +
-  coord_flip()
+```{r total, out.width= '75%',out.height='75%',fig.align='center', fig.cap="Trend of total shelter population for each group", echo=FALSE}
+datebreaks <- seq(as.Date("2020-01-15"), as.Date("2021-12-15"), by = "4 month")
+ggplot(data=data,aes(x=as.Date(date),y=total,color=population_group))+
+  geom_point()+
+  scale_x_date(breaks=datebreaks, date_labels='%b %Y')+
+  labs(x='Month of collection',
+       y='Total number',
+       color='Population group'
+       )
+
 ```
 
-Talk way more about it. 
+It can be be observed that homelessness in most population groups drop quite significantly at the start, until they continue rising shortly after. The reason for this is attributed to the Covid-19 pandemic, where, "hundreds of people fled the city's shelters... due to fears of contracting the novel coronavirus" (Press 2021). We dive deeper into this fact in Figure \@ref(fig:flow). Families and refugees are two population groups that remained consistently low after the drop at the start, which might point to these groups not willing to risk going back to shelters in fear of catching the virus. Whether it is safer in a shelter where there's a possibility of catching a deadly virus, or on the streets; is a question that every homeless individual had to face. We also observe that during the winter months; around January in the figure above, the population slightly spikes. This can be attributed to the creation of various emergency shelters (Shelter 2022 and Nerad, Iman, Wolfson, and Islam 2021) and the presence of the cold, which drive the population back indoors.
+
+Another observation that can be made in this figure is the consistent increase of chronic homeless population in shelters, while other populations dwindle. This can also be attested to the Covid-19 pandemic; seeing as the only people that had the opportunity to leave the shelters were `non-chronic' (every group except chronic), while chronic patients most probably had no choice but to stay, due to their condition.
+
+To test the pandemic's effect on the data, we can observe the bar-plot of individuals entering and leaving the shelter system each month. If there wasn't much of an effect, any change should be attributed to the actively homeless (unless there was a specific reform in order during period of collection). However, if a change in `flow' is observed, i.e. varying rates of people entering and leaving the system, then the pandemic would have had an influence on the data. This can be seen in Figure \@ref(fig:flow). 
+
+```{r flow,out.width= '75%',out.height='75%',fig.align='center', fig.cap="Number of people entering (blue) and leaving (red) the shelter system in Toronto", echo=FALSE}
+
+#all population dataset
+data_all_pop <- data %>% 
+  filter(population_group=='All Population')
+
+#return vs move
+new_data <- data_all_pop %>% 
+  mutate(return_unique=returned+newly_identified)
+
+df2 <- data.frame(new_data$date,new_data$return_unique,
+                  new_data$moved)
+
+df2 %>% 
+  gather('type','value',-new_data.date) %>% 
+  ggplot(aes(as.Date(new_data.date),value,fill=type))+
+  geom_col(position='dodge')+
+  scale_fill_discrete('',labels=c('Exited','Entered'))+
+  labs(x='Date',y='Population')
+
+```
+
+We notice an interesting quality of this plot, where the number of people exiting the system stayed the same; what significantly dropped were the number of people entering the shelters. This can now be directly related to the pandemic, due to fewer people wanting to use the shelter systems during the pandemic (Press 2020 and Press 2021). We can now definitely state the pandemic influenced our data.
+
+Due to this, we can state that January is not the best estimate for our data; and cannot be used to make generalized conclusions like we did with Table \@ref(tab:sheltertable). Instead, month-to-month information is the most reliable, due to the pandemic making the whole two years of collection inconsistent within itself.
+
+We can continue to explore the total population, via witnessing the distribution of genders in the Toronto shelter system. This can be observed in Figure \@ref(fig:gender).
+
+```{r gender,out.width= '75%',out.height='75%',fig.align='center', fig.cap="Shelter population over time, by gender", echo=FALSE}
+df3 <- data.frame(data_all_pop$date,data_all_pop$gender_male,
+                  data_all_pop$gender_female,
+                  data_all_pop$gender_transgender_non_binary_or_two_spirit)
+
+df3 %>% 
+  gather('Type','Value',-data_all_pop.date) %>% 
+  ggplot(aes(as.Date(data_all_pop.date),Value,fill=Type)) + 
+  geom_col(position='dodge')+
+  scale_fill_discrete('Gender',
+                      labels=c('Female','Male','Transgender, non-binary, \n or two spirit','over 65', 'under 16'))+
+  labs(x='Month of collection',
+       y='Number of people',
+       )
+
+```
+
+Here we can see a significant male population in the shelters, nearly double that of female, with the average male population as 5220 and average female population 2959 people. We can also observe a rising population of transgender, non binary, or two spirit, which might be attributed to more inclusion within shelters (Kayn et. al 2020). 
+
+It was found that on average males represent 62.8% of residents in homeless shelters, with females representing 35.6%, and the remaining 1.6% representing transgender, non-binary or two spirit individuals.
 
 
+### Age Groups
+Diving deeper into our data set, we can explore the various age groups in the shelters for these two years, and observe their relative trend. This is an important metric for policy makers, to help the group that needs it the most. Figure \@ref(fig:age) shows this trend.
 
-# Model
+```{r age, out.width= '75%',out.height='75%', fig.align='center', fig.cap="Shelter population by age-group", echo = FALSE}
+#age groups
 
-\begin{equation}
-Pr(\theta | y) = \frac{Pr(y | \theta) Pr(\theta)}{Pr(y)}  (\#eq:bayes)
-\end{equation}
+df <- data.frame(data_all_pop$date,data_all_pop$ageunder16,
+                 data_all_pop$age16_24,data_all_pop$age25_44,
+                 data_all_pop$age45_64,data_all_pop$age65over)
 
-Equation \@ref(eq:bayes) seems useful, eh?
+df %>% 
+  gather('Type','Value',-data_all_pop.date) %>% 
+  ggplot(aes(as.Date(data_all_pop.date),Value,fill=Type)) + geom_col()+
+  scale_fill_discrete('Age group',
+                      labels=c('16-24','25-44','45-64','over 65', 'under 16'))+
+  labs(x='Month of collection',
+       y='Number of people',
+       )
+```
 
-Here's a dumb example of how to use some references: In paper we run our analysis in `R` [@citeR]. We also use the `tidyverse` which was written by @thereferencecanbewhatever If we were interested in baseball data then @citeLahman could be useful. 
+This figure conveys some useful information; that during the drop in shelter population due to the virus, all except the over 65 age group dropped in population. This might be due to older people not being able to leave shelters as readily as the younger population. 
 
-We can use maths by including latex between dollar signs, for instance $\theta$.
+We can also observe the under 16 homeless population in shelters dropped the most significantly out of all groups, and did not rise as much as the others as the pandemic started to calm down. This can also be confirmed by observing the `Youth' group in Figure \@ref(fig:total).
 
+We further explore these groups, via a box plot of the various age groups, to quantify the overall change in population throughout the two years. This can be seen in Figure \@ref(fig:box)
 
-# Results
+```{r box, out.width= '75%',out.height='75%', fig.align='center', fig.cap="Boxplot showing range (inter-quartile range) of population for various age groups", echo = FALSE}
+df %>% 
+  gather('Type','Value',-data_all_pop.date) %>% 
+  ggplot(aes(x=Type,y=Value))+
+  geom_boxplot()+
+  labs(x='Age Group',y='Population')+
+  scale_x_discrete(labels=c('16-24','25-44','45-64','over 65', 'under 16'))
+  
+```
+
+Here, we can observe the age group with the largest range being 25-44, and the smallest; over 65. This is similar to the observations made in Figure \@ref(fig:age), however provide a more quantitative measure. We can now make further sense of this, which is due to the disparity in the number of people in each population group. The low number of older (over 65) population; with the pandemic and therefore more susceptible to health complications, would have not been able to easily leave shelters. Those that were never in a shelter, thought it would be too risky to go to one due to their age, where individuals such as Robert Boast were, "more frightened of coronavirus than dying from stage four cancer" (Black Art 2020). This is evident in the plot above. The size of the boxes in the figure above (the IQR) represent the median 50% of the data, with the line representing the median. The distance of this line from the true `middle' of the box tells us the skewness of the resulting data, with the age groups ranging from 16-64 all positively skewed. This tells us a higher concentration of the data lies at lower population numbers. The under-16 and over-65 category have relatively symmetric plots, indicating similar mean and median values.
 
 # Discussion
+With all the data provided here, the hope was to be able to find the impact on the homeless shelters during these two years. The major impact being the virus, dictated how the shelter population behaved. Numbers started coming back to shelters as soon as the first wave ended. Here, we learn the difference between homeless population, and homeless shelter population. The individuals that left the system during the pandemic felt more secure in tents than they did in the shelters (Press 2020), however that did not mean they were no longer homeless (which we would interpret from the data). As of now, all we can summarize are the government controlled shelters, not the homeless population itself. 
 
-## First discussion point
-
-If my paper were 10 pages, then should be be at least 2.5 pages. The discussion is a chance to show off what you know and what you learnt from all this. 
-
-## Second discussion point
-
-## Third discussion point
-
-## Weaknesses and next steps
-
-Weaknesses and next steps should also be included.
+For future uses, we must aim to collect data from all shelters, and all homeless population. With food, health, emergency reforms in place, tracking of this data could be set up. The SMIS would have to be distributed to all shelters, as well as distribution centers. With all individuals tracked, we can better understand and therefore combat homelessness in Toronto.
 
 \newpage
-
-\appendix
-
-# Appendix {-}
-
-
-# Additional details
-
-
-\newpage
-
 
 # References
+ - R Core Team (2021). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/
 
+- Wickham et al., (2019). Welcome to the tidyverse.
+  Journal of Open Source Software, 4(43), 1686,
+  https://doi.org/10.21105/joss.01686
+  
+- H. Wickham. ggplot2: Elegant Graphics for Data
+  Analysis. Springer-Verlag New York, 2016.
+  
+- Yihui Xie (2021). knitr: A General-Purpose Package
+  for Dynamic Report Generation in R. R package
+  version 1.37.
+  
+- Hao Zhu (2021). kableExtra: Construct Complex Table
+  with 'kable' and Pipe Syntax. R package version
+  1.3.4.
+  https://CRAN.R-project.org/package=kableExtra
+  
+- Sam Firke (2021). janitor: Simple Tools for
+  Examining and Cleaning Dirty Data. R package
+  version 2.1.0.
+  https://CRAN.R-project.org/package=janitor
+  
+- Sharla Gelfand (2020). opendatatoronto: Access the
+  City of Toronto Open Data Portal. R package version
+  0.1.4.
+  https://CRAN.R-project.org/package=opendatatoronto
+  
+ - Shelter, Support & Housing Administration. (2022, January). Toronto Shelter System Flow. City of Toronto Open Data Portal. Retrieved February 4, 2022, from https://open.toronto.ca/dataset/toronto-shelter-system-flow/ 
+  
+ - Coimbra, J. (2016, November 24). Countries without homelessness: Myth or reality? Medium. Retrieved February 2, 2022, from https://joanafgcoimbra.medium.com/countries-without-homelessness-myth-or-reality-a9590c68ad0c 
 
+ - Henley, J. (2019, June 3). 'it's a miracle': Helsinki's radical solution to homelessness. The Guardian. Retrieved February 2, 2022, from https://www.theguardian.com/cities/2019/jun/03/its-a-miracle-helsinkis-radical-solution-to-homelessness 
+ 
+ - Stephen Gaetz, Jesse Donaldson, Tim Richter, & Tanya Gulliver (2013): The State of Homelessness in Canada
+Research Network
+2013. Toronto: Canadian Homelessness Research Network Press.
+
+- Nerad, S., Iman, H., Wolfson, C., & Islam, T. (2021, June). Meeting Crisis with Opportunity: Reimagining Toronto’s Shelter System. Retrieved February 2, 2022, from https://www.reddoorshelter.ca/sites/default/files/tsn_-meeting_crisis_with_opportunity-full_report_-_final_-_july_1_2021.pdf 
+
+- Press, T. C. (2021, March 10). Coronavirus: Ontario to spend $255 million to address COVID-19 outbreaks in homeless shelters. Global News. Retrieved February 6, 2022, from https://globalnews.ca/news/7687665/homeless-shelters-ontario-covid19-funding/ 
+
+- Black Art, W. C. (2020, December 21). 'I'd rather sleep on the street': Homeless cancer patient scared to stay in Toronto's shelters amid covid-19 | CBC Radio. CBCnews. Retrieved February 6, 2022, from https://www.cbc.ca/radio/whitecoat/i-d-rather-sleep-on-the-street-homeless-cancer-patient-scared-to-stay-in-toronto-s-shelters-amid-covid-19-1.5548063 
+
+- Canadian Press. (2020, October 1). People experiencing homelessness safer in tents than shelters during pandemic, Toronto Court hears | CBC news. CBCnews. Retrieved February 6, 2022, from https://www.cbc.ca/news/canada/toronto/toronto-homeless-tents-shelters-pandemic-1.5746955 
+
+- Kayn, F. (2020, October). Transforming the Emergency Homelessness System: Two Spirited, Trans, Nonbinary and Gender Diverse Safety in Shelters Project. Retrieved from https://static1.squarespace.com/static/5728db86b09f95bc05bf8dae/t/5fad6dbd0e8bbf646ff1e3b6/1605201345593/Final+Report+Transforming+the+Shelter+System+Two+Spirited%2C+Trans%2C+and+Gender+Diverse+Safety+in+Shelters+Project_November+12+2020.pdf 

@@ -2,19 +2,19 @@
 # Purpose: Download and clean the data from opendatatoronto
 # Author: Rayhan Walia
 # Data: 31 January 2021
-# Contact: rayhan.walia@mail.utoronto.ca [PROBABLY CHANGE THIS ALSO!!!!]
+# Contact: rayhan.walia@mail.utoronto.ca 
 # License: MIT
 
 
 #### Workspace setup ####
 
+#libraries
 library(tidyverse)
 library(ggplot2)
-library(car)
 library(janitor)
 library(opendatatoronto)
 
-
+#importing package
 package <- show_package("ac77f532-f18b-427c-905c-4ae87ce69c93")
 package
 
@@ -32,11 +32,14 @@ data
 #cleaning data
 data<-clean_names(data)
 data <- data[complete.cases(data),]
-#names
+
+#changing names
 names(data)[names(data) == 'date_mmm_yy'] = 'date'
 
-#creating total number variable
+#creating total number, moved and returned variable
 data <- data %>% 
+  mutate(moved=moved_to_housing+no_recent_shelter_use) %>% 
+  mutate(returned=returned_from_housing+returned_to_shelter) %>% 
   mutate(total=ageunder16+age16_24+age25_44+age45_64+age65over)
 
 #converting dates
@@ -52,6 +55,3 @@ data <- data %>%
 # Save Data #
 
 write_csv(data,'inputs/data/shelter_flow.csv')
-
-
-         
